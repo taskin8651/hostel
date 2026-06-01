@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Notifications\VerifyUserNotification;
+use App\Models\Hostel\Staff;
+use App\Models\Hostel\Student;
 use Carbon\Carbon;
 use DateTimeInterface;
 use Hash;
@@ -13,10 +15,11 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use SoftDeletes, Notifiable, HasFactory;
+    use HasApiTokens, SoftDeletes, Notifiable, HasFactory;
 
     public $table = 'users';
 
@@ -89,5 +92,15 @@ class User extends Authenticatable
     public function roles()
     {
         return $this->belongsToMany(Role::class);
+    }
+
+    public function studentProfile()
+    {
+        return $this->hasOne(Student::class, 'user_id');
+    }
+
+    public function staffProfile()
+    {
+        return $this->hasOne(Staff::class, 'user_id');
     }
 }

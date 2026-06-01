@@ -108,6 +108,79 @@
             </div>
         @endcan
 
+        {{-- HOSTEL MANAGEMENT GROUPS --}}
+        @php
+            $hostelModules = collect(config('hostel.modules'))->groupBy('menu', true);
+            $hostelActive = request()->is('admin/hostel*');
+        @endphp
+
+        @foreach($hostelModules as $groupName => $modules)
+            @php
+                $groupKey = \Illuminate\Support\Str::slug($groupName);
+                $groupActive = $modules->keys()->contains(fn ($key) => request()->is('admin/' . $key . '*') || request()->is('admin/hostel/' . $key . '*'));
+                $canSeeGroup = $modules->keys()->contains(fn ($key) => Gate::allows($key . '_access'));
+            @endphp
+
+            @if($canSeeGroup)
+                <div x-data="{ open: {{ $groupActive ? 'true' : 'false' }} }">
+                    <button type="button"
+                            @click="open = !open"
+                            data-tooltip="{{ $groupName }}"
+                            class="nav-link nav-group-btn {{ $groupActive ? 'active' : '' }}">
+                        <div class="nav-group-left">
+                            <i class="fas fa-hotel nav-icon"></i>
+                            <span class="nav-label">{{ $groupName }}</span>
+                        </div>
+                        <i class="fas fa-chevron-right chevron" :style="open ? 'transform:rotate(90deg)' : ''"></i>
+                    </button>
+
+                    <div class="submenu"
+                         x-show="open"
+                         x-transition:enter="transition ease-out duration-150"
+                         x-transition:enter-start="opacity-0 -translate-y-1"
+                         x-transition:enter-end="opacity-100 translate-y-0"
+                         x-transition:leave="transition ease-in duration-100"
+                         x-transition:leave-start="opacity-100 translate-y-0"
+                         x-transition:leave-end="opacity-0 -translate-y-1">
+                        @foreach($modules as $key => $hostelModule)
+                            @can($key . '_access')
+                                <a href="{{ route('admin.' . $key . '.index') }}"
+                                   class="sub-link {{ request()->is('admin/' . $key . '*') || request()->is('admin/hostel/' . $key . '*') ? 'active' : '' }}">
+                                    <i class="{{ $hostelModule['icon'] }}"></i>
+                                    {{ $hostelModule['title'] }}
+                                </a>
+                            @endcan
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+        @endforeach
+
+        @can('students_access')
+            <div x-data="{ open: {{ request()->is('admin/hostel/reports*') ? 'true' : 'false' }} }">
+                <button type="button"
+                        @click="open = !open"
+                        data-tooltip="Reports"
+                        class="nav-link nav-group-btn {{ request()->is('admin/hostel/reports*') ? 'active' : '' }}">
+                    <div class="nav-group-left">
+                        <i class="fas fa-chart-line nav-icon"></i>
+                        <span class="nav-label">Reports</span>
+                    </div>
+                    <i class="fas fa-chevron-right chevron" :style="open ? 'transform:rotate(90deg)' : ''"></i>
+                </button>
+
+                <div class="submenu" x-show="open">
+                    @foreach(config('hostel.reports') as $key => $report)
+                        <a href="{{ route('admin.hostel.reports.show', $key) }}"
+                           class="sub-link {{ request()->is('admin/hostel/reports/' . $key) ? 'active' : '' }}">
+                            <i class="fas fa-file-alt"></i>
+                            {{ $report['title'] }}
+                        </a>
+                    @endforeach
+                </div>
+            </div>
+        @endcan
+
         <div class="nav-divider"></div>
 
         <p class="sidebar-section-title compact nav-label">Account</p>

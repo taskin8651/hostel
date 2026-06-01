@@ -88,6 +88,22 @@ class PermissionsTableSeeder extends Seeder
             ],
         ];
 
-        Permission::insert($permissions);
+        $nextId = 25;
+
+        foreach (array_keys(config('hostel.modules', [])) as $module) {
+            foreach (['access', 'create', 'edit', 'show', 'delete'] as $action) {
+                $permissions[] = [
+                    'id'    => $nextId++,
+                    'title' => $module . '_' . $action,
+                ];
+            }
+        }
+
+        foreach ($permissions as $permission) {
+            Permission::updateOrCreate(
+                ['title' => $permission['title']],
+                ['id' => $permission['id'], 'title' => $permission['title']]
+            );
+        }
     }
 }
