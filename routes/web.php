@@ -30,6 +30,7 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'namespace' => 'Admin', 'mi
         'complaints'         => 'ComplaintsController',
         'leaves'             => 'LeavesController',
         'staff'              => 'StaffController',
+        'documents'          => 'DocumentsController',
         'food-menus'         => 'FoodMenusController',
         'staff-payments'     => 'StaffPaymentsController',
         'staff-works'        => 'StaffWorksController',

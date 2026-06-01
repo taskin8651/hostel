@@ -50,4 +50,9 @@ class Student extends BaseHostelModel
     {
         return $this->hasMany(FeePayment::class, 'student_id');
     }
+
+    public function documents()
+    {
+        return $this->hasMany(Document::class, 'student_id');
+    }
 }

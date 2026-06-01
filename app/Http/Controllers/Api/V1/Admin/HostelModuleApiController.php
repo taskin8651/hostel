@@ -104,7 +104,7 @@ class HostelModuleApiController extends Controller
         $rules = [];
 
         foreach ($config['fields'] as $name => $field) {
-            $rule = [($field['required'] ?? false) ? 'required' : 'nullable'];
+            $rule = [(($field['required'] ?? false) && ! (($field['type'] ?? null) === 'file' && $item)) ? 'required' : 'nullable'];
 
             if ($field['type'] === 'email') {
                 $rule[] = 'email';
@@ -154,8 +154,8 @@ class HostelModuleApiController extends Controller
             $data['attendance_datetime'] = now();
         }
 
-        if ($module === 'food-menus' && empty($data['day_name']) && ! empty($data['day'])) {
-            $data['day_name'] = $data['day'];
+        if ($module === 'student-attendance' && empty($data['attendance_date']) && ! empty($data['attendance_datetime'])) {
+            $data['attendance_date'] = \Illuminate\Support\Carbon::parse($data['attendance_datetime'])->toDateString();
         }
 
         return $data;
@@ -253,19 +253,6 @@ class HostelModuleApiController extends Controller
             }
         }
 
-        if ($module === 'student-attendance') {
-            $exists = DB::table('hostel_student_attendance')
-                ->where('student_id', $request->input('student_id'))
-                ->whereDate('attendance_date', $request->input('attendance_date'))
-                ->whereNull('deleted_at')
-                ->when($id, fn ($query) => $query->where('id', '!=', $id))
-                ->exists();
-
-            if ($exists) {
-                throw ValidationException::withMessages(['attendance_date' => 'Attendance for this student is already marked for the selected date.']);
-            }
-        }
-
         if ($module === 'staff-attendance') {
             $exists = DB::table('hostel_staff_attendance')
                 ->where('staff_id', $request->input('staff_id'))
@@ -290,6 +277,16 @@ class HostelModuleApiController extends Controller
 
             if ($request->input('from_date') && $request->input('to_date') && $request->input('to_date') < $request->input('from_date')) {
                 throw ValidationException::withMessages(['to_date' => 'To date must be after or equal to from date.']);
+            }
+        }
+
+        if ($module === 'documents') {
+            if ($request->input('person_type') === 'student' && ! $request->input('student_id')) {
+                throw ValidationException::withMessages(['student_id' => 'Student is required for student document.']);
+            }
+
+            if ($request->input('person_type') === 'staff' && ! $request->input('staff_id')) {
+                throw ValidationException::withMessages(['staff_id' => 'Staff is required for staff document.']);
             }
         }
     }

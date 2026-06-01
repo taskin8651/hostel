@@ -29,4 +29,9 @@ class Staff extends BaseHostelModel
     {
         return $this->hasMany(StaffWork::class, 'staff_id');
     }
+
+    public function documents()
+    {
+        return $this->hasMany(Document::class, 'staff_id');
+    }
 }
