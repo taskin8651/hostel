@@ -63,3 +63,4 @@ Route::group(['prefix' => 'v1', 'as' => 'api.', 'namespace' => 'Api\V1\Admin'], 
         Route::delete('{module}/{id}', 'HostelModuleApiController@destroy')->name('hostel.destroy');
     });
 });
+// Sanket Kumar
