@@ -34,7 +34,6 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'namespace' => 'Admin', 'mi
         'staff-payments'     => 'StaffPaymentsController',
         'staff-works'        => 'StaffWorksController',
         'expenses'           => 'ExpensesController',
-        'hostel-expenses'    => 'HostelExpensesController',
         'incomes'            => 'IncomesController',
         'bills'              => 'BillsController',
         'notices'            => 'NoticesController',
@@ -45,6 +44,11 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'namespace' => 'Admin', 'mi
         Route::delete($uri . '/destroy', $controller . '@massDestroy')->name($uri . '.massDestroy');
         Route::resource($uri, $controller);
     }
+
+    Route::redirect('hostel-expenses', 'expenses');
+    Route::redirect('hostel-expenses/create', 'expenses/create');
+    Route::redirect('hostel-expenses/{id}', 'expenses/{id}');
+    Route::redirect('hostel-expenses/{id}/edit', 'expenses/{id}/edit');
 
     Route::get('hostel/reports/{report}', 'HostelModuleController@report')->name('hostel.reports.show');
     Route::get('hostel/fee-payments/{id}/receipt', 'HostelModuleController@receipt')->name('hostel.fee-payments.receipt');

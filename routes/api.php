@@ -26,7 +26,6 @@ Route::group(['prefix' => 'v1', 'as' => 'api.', 'namespace' => 'Api\V1\Admin'], 
             'staff-payments'     => 'StaffPaymentsApiController',
             'staff-works'        => 'StaffWorksApiController',
             'expenses'           => 'ExpensesApiController',
-            'hostel-expenses'    => 'HostelExpensesApiController',
             'incomes'            => 'IncomesApiController',
             'bills'              => 'BillsApiController',
             'notices'            => 'NoticesApiController',
@@ -42,6 +41,14 @@ Route::group(['prefix' => 'v1', 'as' => 'api.', 'namespace' => 'Api\V1\Admin'], 
             Route::put($uri . '/{id}/status', $controller . '@updateStatus')->name($uri . '.status');
             Route::delete($uri . '/{id}', $controller . '@destroy')->name($uri . '.destroy');
         }
+
+        Route::get('hostel-expenses', 'ExpensesApiController@index');
+        Route::post('hostel-expenses', 'ExpensesApiController@store');
+        Route::get('hostel-expenses/{id}', 'ExpensesApiController@show');
+        Route::put('hostel-expenses/{id}', 'ExpensesApiController@update');
+        Route::patch('hostel-expenses/{id}', 'ExpensesApiController@update');
+        Route::put('hostel-expenses/{id}/status', 'ExpensesApiController@updateStatus');
+        Route::delete('hostel-expenses/{id}', 'ExpensesApiController@destroy');
 
         // SOW-friendly aliases for singular endpoint names.
         Route::get('room-allocation', 'RoomAllocationsApiController@index');

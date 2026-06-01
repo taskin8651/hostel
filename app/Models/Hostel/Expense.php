@@ -12,4 +12,9 @@ class Expense extends BaseHostelModel
         'updated_at' => 'datetime',
         'deleted_at' => 'datetime',
     ];
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class, 'branch_id');
+    }
 }

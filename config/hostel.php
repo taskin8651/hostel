@@ -4,6 +4,7 @@ $statusOptions = ['active' => 'Active', 'inactive' => 'Inactive'];
 $paymentModes = ['cash' => 'Cash', 'upi' => 'UPI', 'bank' => 'Bank Transfer', 'card' => 'Card', 'cheque' => 'Cheque'];
 $bloodGroups = ['a_positive' => 'A+', 'a_negative' => 'A-', 'b_positive' => 'B+', 'b_negative' => 'B-', 'ab_positive' => 'AB+', 'ab_negative' => 'AB-', 'o_positive' => 'O+', 'o_negative' => 'O-'];
 $weekDays = ['monday' => 'Monday', 'tuesday' => 'Tuesday', 'wednesday' => 'Wednesday', 'thursday' => 'Thursday', 'friday' => 'Friday', 'saturday' => 'Saturday', 'sunday' => 'Sunday'];
+$expenseTypes = ['general' => 'General', 'electricity' => 'Electricity', 'water' => 'Water', 'maintenance' => 'Maintenance', 'repair' => 'Repair', 'food' => 'Food', 'cleaning' => 'Cleaning', 'rent' => 'Rent', 'staff' => 'Staff', 'student' => 'Student', 'other' => 'Other'];
 
 return [
     'modules' => [
@@ -319,31 +320,18 @@ return [
             'icon' => 'fas fa-wallet',
             'menu' => 'Finance',
             'table' => 'hostel_expenses',
-            'quick' => ['title', 'category', 'amount', 'expense_date', 'payment_mode'],
+            'quick' => ['branch_id', 'expense_type', 'title', 'amount', 'expense_date', 'payment_mode'],
             'fields' => [
-                'title' => ['label' => 'Expense Title', 'type' => 'text', 'required' => true],
+                'branch_id' => ['label' => 'Hostel Branch', 'type' => 'select', 'source' => 'branches', 'nullable' => true],
+                'expense_type' => ['label' => 'Expense Type', 'type' => 'select', 'options' => $expenseTypes, 'default' => 'general'],
+                'title' => ['label' => 'Expense Title', 'type' => 'text', 'nullable' => true],
                 'category' => ['label' => 'Category', 'type' => 'text', 'nullable' => true],
                 'amount' => ['label' => 'Amount', 'type' => 'number', 'default' => 0],
                 'expense_date' => ['label' => 'Expense Date', 'type' => 'date', 'nullable' => true],
                 'payment_mode' => ['label' => 'Payment Mode', 'type' => 'select', 'options' => $paymentModes],
                 'bill_upload' => ['label' => 'Bill Upload', 'type' => 'file', 'nullable' => true],
                 'remark' => ['label' => 'Remark', 'type' => 'textarea', 'nullable' => true],
-            ],
-        ],
-        'hostel-expenses' => [
-            'title' => 'Hostel Expenses',
-            'singular' => 'Hostel Expense',
-            'icon' => 'fas fa-building',
-            'menu' => 'Finance',
-            'table' => 'hostel_hostel_expenses',
-            'quick' => ['expense_type', 'amount', 'expense_date', 'payment_mode'],
-            'fields' => [
-                'expense_type' => ['label' => 'Expense Type', 'type' => 'select', 'options' => ['electricity' => 'Electricity', 'water' => 'Water', 'maintenance' => 'Maintenance', 'repair' => 'Repair', 'food' => 'Food', 'cleaning' => 'Cleaning', 'rent' => 'Rent', 'other' => 'Other']],
-                'amount' => ['label' => 'Amount', 'type' => 'number', 'default' => 0],
-                'expense_date' => ['label' => 'Expense Date', 'type' => 'date', 'nullable' => true],
-                'payment_mode' => ['label' => 'Payment Mode', 'type' => 'select', 'options' => $paymentModes],
-                'bill_upload' => ['label' => 'Bill Upload', 'type' => 'file', 'nullable' => true],
-                'remark' => ['label' => 'Remark', 'type' => 'textarea', 'nullable' => true],
+                'status' => ['label' => 'Status', 'type' => 'select', 'options' => ['paid' => 'Paid', 'unpaid' => 'Unpaid', 'pending' => 'Pending'], 'default' => 'paid'],
             ],
         ],
         'incomes' => [
