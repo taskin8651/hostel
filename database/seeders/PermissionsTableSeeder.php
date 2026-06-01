@@ -93,17 +93,19 @@ class PermissionsTableSeeder extends Seeder
         foreach (array_keys(config('hostel.modules', [])) as $module) {
             foreach (['access', 'create', 'edit', 'show', 'delete'] as $action) {
                 $permissions[] = [
-                    'id'    => $nextId++,
                     'title' => $module . '_' . $action,
                 ];
             }
         }
 
         foreach ($permissions as $permission) {
-            Permission::updateOrCreate(
-                ['title' => $permission['title']],
-                ['id' => $permission['id'], 'title' => $permission['title']]
-            );
+            $values = ['title' => $permission['title']];
+
+            if (isset($permission['id'])) {
+                $values['id'] = $permission['id'];
+            }
+
+            Permission::updateOrCreate(['title' => $permission['title']], $values);
         }
     }
 }

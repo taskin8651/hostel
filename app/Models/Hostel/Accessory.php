@@ -10,4 +10,9 @@ class Accessory extends BaseHostelModel
     {
         return $this->belongsTo(Room::class, 'room_id');
     }
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class, 'branch_id');
+    }
 }

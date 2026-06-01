@@ -106,7 +106,13 @@
                             @endphp
                             <td>
                                 @if(($field['type'] ?? null) === 'file' && $value)
-                                    <a href="{{ $display }}" target="_blank" class="btn-outline">View file</a>
+                                    @if(preg_match('/\.(jpg|jpeg|png|gif|webp)$/i', $value))
+                                        <a href="{{ $display }}" target="_blank">
+                                            <img src="{{ $display }}" alt="{{ $field['label'] ?? $fieldName }}" style="width:52px;height:52px;object-fit:cover;border-radius:6px;border:1px solid #d1d5db;">
+                                        </a>
+                                    @else
+                                        <a href="{{ $display }}" target="_blank" class="btn-outline">View file</a>
+                                    @endif
                                 @elseif(($field['label'] ?? '') === 'Status' || str_contains($fieldName, 'status'))
                                     <span class="status-pill {{ in_array($value, ['active','available','vacant','present','paid','published','approved','resolved','completed'], true) ? 'success' : 'warning' }}">
                                         {{ $display }}

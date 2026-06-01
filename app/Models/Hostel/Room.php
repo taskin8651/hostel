@@ -11,6 +11,16 @@ class Room extends BaseHostelModel
         return $this->hasMany(Bed::class, 'room_id');
     }
 
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class, 'branch_id');
+    }
+
+    public function students()
+    {
+        return $this->hasMany(Student::class, 'room_id');
+    }
+
     public function allocations()
     {
         return $this->hasMany(RoomAllocation::class, 'room_id');

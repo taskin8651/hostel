@@ -8,6 +8,7 @@ Route::group(['prefix' => 'v1', 'as' => 'api.', 'namespace' => 'Api\V1\Admin'], 
         Route::get('profile', 'AuthApiController@profile')->name('profile');
 
         $hostelApiControllers = [
+            'branches'           => 'BranchesApiController',
             'students'           => 'StudentsApiController',
             'rooms'              => 'RoomsApiController',
             'beds'               => 'BedsApiController',

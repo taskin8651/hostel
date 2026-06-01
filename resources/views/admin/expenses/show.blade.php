@@ -61,7 +61,13 @@
                 <span class="detail-label">{{ $field['label'] }}</span>
                 <span class="detail-value">
                     @if($field['type'] === 'file' && $value)
-                        <a href="{{ $display }}" target="_blank" class="btn-outline">View file</a>
+                        @if(preg_match('/\.(jpg|jpeg|png|gif|webp)$/i', $value))
+                            <a href="{{ $display }}" target="_blank">
+                                <img src="{{ $display }}" alt="{{ $field['label'] }}" style="width:120px;height:120px;object-fit:cover;border-radius:6px;border:1px solid #d1d5db;">
+                            </a>
+                        @else
+                            <a href="{{ $display }}" target="_blank" class="btn-outline">View file</a>
+                        @endif
                     @else
                         {{ $display }}
                     @endif

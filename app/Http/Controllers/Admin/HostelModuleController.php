@@ -7,6 +7,7 @@ use App\Models\Hostel\Bed;
 use App\Models\Hostel\Fee;
 use App\Models\Hostel\Room;
 use App\Models\Hostel\RoomAllocation;
+use App\Models\Hostel\Student;
 use App\Models\Role;
 use App\Models\User;
 use Gate;
@@ -204,6 +205,8 @@ class HostelModuleController extends Controller
                 $rule[] = 'numeric';
             } elseif ($field['type'] === 'date') {
                 $rule[] = 'date';
+            } elseif ($field['type'] === 'datetime') {
+                $rule[] = 'date';
             } elseif ($field['type'] === 'file') {
                 $rule[] = 'file';
                 $rule[] = 'max:8192';
@@ -229,9 +232,23 @@ class HostelModuleController extends Controller
                 } elseif ($item) {
                     $data[$name] = $item->{$name};
                 }
+            } elseif ($field['type'] === 'password' && $item && empty($validated[$name])) {
+                $data[$name] = $item->{$name};
             } else {
                 $data[$name] = $validated[$name] ?? ($field['default'] ?? null);
             }
+        }
+
+        if ($module === 'room-allocations') {
+            $this->fillAllocationBranch($data);
+        }
+
+        if (in_array($module, ['student-attendance'], true) && empty($data['attendance_datetime'])) {
+            $data['attendance_datetime'] = now();
+        }
+
+        if ($module === 'food-menus' && empty($data['day_name']) && ! empty($data['day'])) {
+            $data['day_name'] = $data['day'];
         }
 
         return $data;
@@ -242,7 +259,26 @@ class HostelModuleController extends Controller
         if ($module === 'room-allocations') {
             $bedId = $request->input('bed_id');
             $roomId = $request->input('room_id');
+            $studentId = $request->input('student_id');
+            $branchId = $request->input('branch_id');
             $status = $request->input('status', 'active');
+
+            $activeStudentAllocation = RoomAllocation::where('student_id', $studentId)
+                ->where('status', 'active')
+                ->whereNull('deleted_at')
+                ->when($id, fn ($query) => $query->where('id', '!=', $id))
+                ->exists();
+
+            if ($status === 'active' && $activeStudentAllocation && ! $request->input('shift_date')) {
+                throw ValidationException::withMessages(['student_id' => 'This student already has an active room allocation. Add a shift date to transfer.']);
+            }
+
+            if ($branchId && $roomId) {
+                $room = Room::whereKey($roomId)->first();
+                if ($room && $room->branch_id && (int) $room->branch_id !== (int) $branchId) {
+                    throw ValidationException::withMessages(['room_id' => 'Selected room does not belong to the selected branch.']);
+                }
+            }
 
             if ($bedId) {
                 $bed = Bed::whereKey($bedId)->first();
@@ -263,6 +299,42 @@ class HostelModuleController extends Controller
                 if ($status === 'active' && $activeAllocation) {
                     throw ValidationException::withMessages(['bed_id' => 'This bed is already allocated to another active student.']);
                 }
+            }
+        }
+
+        if (in_array($module, ['students', 'rooms'], true)) {
+            $branchId = $request->input('branch_id');
+            $roomId = $request->input('room_id');
+
+            if ($branchId && $roomId) {
+                $room = Room::whereKey($roomId)->first();
+                if ($room && $room->branch_id && (int) $room->branch_id !== (int) $branchId) {
+                    throw ValidationException::withMessages(['room_id' => 'Selected room does not belong to the selected branch.']);
+                }
+            }
+        }
+
+        if ($module === 'food-menus') {
+            $day = $request->input('day');
+            $exists = DB::table('hostel_food_menus')
+                ->where('day', $day)
+                ->whereNull('deleted_at')
+                ->when($id, fn ($query) => $query->where('id', '!=', $id))
+                ->exists();
+
+            if ($day && $exists) {
+                throw ValidationException::withMessages(['day' => 'Menu for this day already exists.']);
+            }
+        }
+
+        if ($module === 'staff-payments' && $request->input('staff_attendance_id')) {
+            $attendance = DB::table('hostel_staff_attendance')->where('id', $request->input('staff_attendance_id'))->whereNull('deleted_at')->first();
+            if (! $attendance) {
+                throw ValidationException::withMessages(['staff_attendance_id' => 'Selected staff attendance was not found.']);
+            }
+
+            if ((int) $attendance->staff_id !== (int) $request->input('staff_id')) {
+                throw ValidationException::withMessages(['staff_attendance_id' => 'Selected attendance does not belong to the selected staff member.']);
             }
         }
 
@@ -332,11 +404,22 @@ class HostelModuleController extends Controller
 
                 $source = config('hostel.modules.' . $field['source']);
                 if ($source) {
-                    $options[$name] = DB::table($source['table'])
+                    $rows = DB::table($source['table'])
                         ->whereNull('deleted_at')
                         ->orderBy('id')
-                        ->get()
+                        ->get();
+
+                    $options[$name] = $rows
                         ->mapWithKeys(fn ($row) => [$row->id => $this->labelForRow($field['source'], $row)])
+                        ->toArray();
+
+                    $options[$name . '_meta'] = $rows
+                        ->mapWithKeys(fn ($row) => [$row->id => [
+                            'branch_id' => $row->branch_id ?? null,
+                            'room_id' => $row->room_id ?? null,
+                            'student_branch_id' => $row->branch_id ?? null,
+                            'student_room_id' => $row->room_id ?? null,
+                        ]])
                         ->toArray();
                 }
             }
@@ -352,6 +435,8 @@ class HostelModuleController extends Controller
             'rooms' => 'Room ' . ($row->room_number ?? $row->id),
             'beds' => 'Bed ' . ($row->bed_number ?? $row->id),
             'staff' => $row->name ?? 'Staff #' . $row->id,
+            'branches' => $row->name ?? 'Branch #' . $row->id,
+            'staff-attendance' => trim(($row->staff_id ?? 'Staff') . ' - ' . ($row->attendance_date ?? ('#' . $row->id)), ' -'),
             default => $row->title ?? $row->name ?? ('#' . $row->id),
         };
     }
@@ -397,6 +482,12 @@ class HostelModuleController extends Controller
             return;
         }
 
+        if ($module === 'students') {
+            $this->syncStudentRoomAllocation($id, $data);
+            $this->syncLoginUser($module, $id, $data);
+            return;
+        }
+
         if ($module === 'beds') {
             if (! empty($data['room_id'])) {
                 $this->refreshRoomStatus((int) $data['room_id']);
@@ -414,9 +505,78 @@ class HostelModuleController extends Controller
             return;
         }
 
-        if (in_array($module, ['students', 'staff'], true)) {
+        if (in_array($module, ['staff'], true)) {
             $this->syncLoginUser($module, $id, $data);
         }
+    }
+
+    private function fillAllocationBranch(array &$data): void
+    {
+        if (! empty($data['branch_id'])) {
+            return;
+        }
+
+        if (! empty($data['student_id'])) {
+            $student = Student::find($data['student_id']);
+            if ($student?->branch_id) {
+                $data['branch_id'] = $student->branch_id;
+                return;
+            }
+        }
+
+        if (! empty($data['room_id'])) {
+            $room = Room::find($data['room_id']);
+            if ($room?->branch_id) {
+                $data['branch_id'] = $room->branch_id;
+            }
+        }
+    }
+
+    private function syncStudentRoomAllocation(int $studentId, array $data): void
+    {
+        if (empty($data['room_id'])) {
+            return;
+        }
+
+        $student = Student::find($studentId);
+        $room = Room::find($data['room_id']);
+        if (! $student || ! $room) {
+            return;
+        }
+
+        $branchId = $data['branch_id'] ?: $room->branch_id;
+
+        $allocation = RoomAllocation::where('student_id', $studentId)
+            ->where('status', 'active')
+            ->latest('id')
+            ->first();
+
+        if ($allocation && (int) $allocation->room_id === (int) $room->id) {
+            $allocation->update([
+                'branch_id' => $branchId,
+                'updated_at' => now(),
+            ]);
+            return;
+        }
+
+        if ($allocation) {
+            $allocation->update([
+                'status' => 'changed',
+                'shift_date' => now()->toDateString(),
+                'vacate_date' => now()->toDateString(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        $newAllocation = RoomAllocation::create([
+            'student_id' => $studentId,
+            'branch_id' => $branchId,
+            'room_id' => $room->id,
+            'allocation_date' => $data['joining_date'] ?? now()->toDateString(),
+            'status' => 'active',
+        ]);
+
+        $this->syncAllocation($newAllocation->id, $newAllocation->toArray(), $allocation);
     }
 
     private function afterDelete(string $module, object $item): void
@@ -478,6 +638,7 @@ class HostelModuleController extends Controller
                 ->where('status', 'active')
                 ->update([
                     'status' => 'changed',
+                    'shift_date' => $allocation->shift_date ?: now()->toDateString(),
                     'vacate_date' => now()->toDateString(),
                     'updated_at' => now(),
                 ]);
@@ -578,17 +739,26 @@ class HostelModuleController extends Controller
             $user = User::where('email', $record->email)->first();
         }
 
+        $defaultPassword = property_exists($record, 'default_password') ? $record->default_password : null;
+        $password = $defaultPassword ?: ($record->mobile ?: 'password');
+
         if (! $user) {
             $user = User::create([
                 'name' => $record->name,
                 'email' => $record->email,
-                'password' => $record->mobile ?: 'password',
+                'password' => $password,
             ]);
         } else {
-            $user->update([
+            $updates = [
                 'name' => $record->name,
                 'email' => $record->email,
-            ]);
+            ];
+
+            if ($defaultPassword) {
+                $updates['password'] = $defaultPassword;
+            }
+
+            $user->update($updates);
         }
 
         $user->roles()->sync([$role->id]);

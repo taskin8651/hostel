@@ -8,6 +8,7 @@ class RoomAllocation extends BaseHostelModel
 
     protected $casts = [
         'allocation_date' => 'date',
+        'shift_date' => 'date',
         'vacate_date' => 'date',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
@@ -22,6 +23,11 @@ class RoomAllocation extends BaseHostelModel
     public function room()
     {
         return $this->belongsTo(Room::class, 'room_id');
+    }
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class, 'branch_id');
     }
 
     public function bed()

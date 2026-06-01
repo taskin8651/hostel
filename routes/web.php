@@ -16,6 +16,7 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'namespace' => 'Admin', 'mi
 
     // Hostel Management
     $hostelControllers = [
+        'branches'           => 'BranchesController',
         'students'           => 'StudentsController',
         'rooms'              => 'RoomsController',
         'beds'               => 'BedsController',

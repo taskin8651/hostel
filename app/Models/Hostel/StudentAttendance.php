@@ -8,6 +8,7 @@ class StudentAttendance extends BaseHostelModel
 
     protected $casts = [
         'attendance_date' => 'date',
+        'attendance_datetime' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'deleted_at' => 'datetime',

@@ -17,4 +17,9 @@ class StaffPayment extends BaseHostelModel
     {
         return $this->belongsTo(Staff::class, 'staff_id');
     }
+
+    public function attendance()
+    {
+        return $this->belongsTo(StaffAttendance::class, 'staff_attendance_id');
+    }
 }

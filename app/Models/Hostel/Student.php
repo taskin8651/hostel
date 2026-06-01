@@ -9,6 +9,7 @@ class Student extends BaseHostelModel
     protected $table = 'hostel_students';
 
     protected $casts = [
+        'dob' => 'date',
         'joining_date' => 'date',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
@@ -23,6 +24,16 @@ class Student extends BaseHostelModel
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class, 'branch_id');
+    }
+
+    public function room()
+    {
+        return $this->belongsTo(Room::class, 'room_id');
     }
 
     public function activeAllocation()

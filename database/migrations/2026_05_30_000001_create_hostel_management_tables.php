@@ -18,6 +18,7 @@ return new class extends Migration
                     match ($field['type']) {
                         'number' => $table->decimal($name, 12, 2)->default($field['default'] ?? 0),
                         'date' => $table->date($name)->nullable($nullable),
+                        'datetime' => $table->dateTime($name)->nullable($nullable),
                         'time' => $table->time($name)->nullable($nullable),
                         'textarea' => $table->text($name)->nullable($nullable),
                         'file' => $table->string($name)->nullable(),

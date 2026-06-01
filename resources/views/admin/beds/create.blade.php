@@ -43,6 +43,12 @@
             @foreach($config['fields'] as $name => $field)
                 @php
                     $oldValue = old($name, $item->{$name} ?? ($field['default'] ?? ''));
+                    if (($field['type'] ?? null) === 'password' && ! old($name)) {
+                        $oldValue = '';
+                    }
+                    if (($field['type'] ?? null) === 'datetime' && $oldValue) {
+                        $oldValue = str_replace(' ', 'T', substr($oldValue, 0, 16));
+                    }
                     $isTextarea = $field['type'] === 'textarea';
                 @endphp
                 <div class="field-group" style="{{ $isTextarea ? 'grid-column:1 / -1;' : '' }}">
@@ -56,10 +62,16 @@
                     @if($field['type'] === 'textarea')
                         <textarea name="{{ $name }}" id="{{ $name }}" rows="4" class="field-input {{ $errors->has($name) ? 'error' : '' }}">{{ $oldValue }}</textarea>
                     @elseif($field['type'] === 'select')
-                        <select name="{{ $name }}" id="{{ $name }}" class="field-input {{ $errors->has($name) ? 'error' : '' }}">
+                        <select name="{{ $name }}" id="{{ $name }}" data-depends-on="{{ $field['depends_on'] ?? '' }}" class="field-input {{ $errors->has($name) ? 'error' : '' }}">
                             <option value="">{{ trans('global.pleaseSelect') }}</option>
                             @foreach($options[$name] ?? [] as $value => $label)
-                                <option value="{{ $value }}" {{ (string) $oldValue === (string) $value ? 'selected' : '' }}>{{ $label }}</option>
+                                @php($meta = $options[$name . '_meta'][$value] ?? [])
+                                <option value="{{ $value }}"
+                                        data-branch-id="{{ $meta['branch_id'] ?? '' }}"
+                                        data-room-id="{{ $meta['room_id'] ?? '' }}"
+                                        data-student-branch-id="{{ $meta['student_branch_id'] ?? '' }}"
+                                        data-student-room-id="{{ $meta['student_room_id'] ?? '' }}"
+                                        {{ (string) $oldValue === (string) $value ? 'selected' : '' }}>{{ $label }}</option>
                             @endforeach
                         </select>
                     @elseif($field['type'] === 'file')
@@ -69,9 +81,14 @@
                                 Current file:
                                 <a href="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($item->{$name}) }}" target="_blank">View</a>
                             </p>
+                            @if(preg_match('/\.(jpg|jpeg|png|gif|webp)$/i', $item->{$name}))
+                                <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($item->{$name}) }}"
+                                     alt="{{ $field['label'] }}"
+                                     style="width:96px;height:96px;object-fit:cover;border-radius:6px;border:1px solid #d1d5db;margin-top:8px;">
+                            @endif
                         @endif
                     @else
-                        <input type="{{ in_array($field['type'], ['email','number','date','time'], true) ? $field['type'] : 'text' }}"
+                        <input type="{{ $field['type'] === 'datetime' ? 'datetime-local' : (in_array($field['type'], ['email','number','date','time','password'], true) ? $field['type'] : 'text') }}"
                                name="{{ $name }}"
                                id="{{ $name }}"
                                value="{{ $oldValue }}"
@@ -98,4 +115,77 @@
     </div>
 </form>
 
+@endsection
+
+@section('scripts')
+@parent
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const selects = Array.from(document.querySelectorAll('select[data-depends-on]')).filter(select => select.dataset.dependsOn);
+
+    function optionMatches(select, option) {
+        if (! option.value) {
+            return true;
+        }
+
+        const parent = document.getElementById(select.dataset.dependsOn);
+        if (! parent || ! parent.value) {
+            return true;
+        }
+
+        if (select.dataset.dependsOn === 'branch_id') {
+            return ! option.dataset.branchId || option.dataset.branchId === parent.value;
+        }
+
+        if (select.dataset.dependsOn === 'room_id') {
+            return ! option.dataset.roomId || option.dataset.roomId === parent.value;
+        }
+
+        return true;
+    }
+
+    function refresh(select) {
+        Array.from(select.options).forEach(option => {
+            option.hidden = ! optionMatches(select, option);
+        });
+
+        if (select.selectedOptions[0] && select.selectedOptions[0].hidden) {
+            select.value = '';
+        }
+    }
+
+    selects.forEach(select => {
+        const parent = document.getElementById(select.dataset.dependsOn);
+        if (parent) {
+            parent.addEventListener('change', function () {
+                refresh(select);
+                select.dispatchEvent(new Event('change'));
+            });
+        }
+        refresh(select);
+    });
+
+    const studentSelect = document.getElementById('student_id');
+    const branchSelect = document.getElementById('branch_id');
+    const roomSelect = document.getElementById('room_id');
+    if (studentSelect) {
+        studentSelect.addEventListener('change', function () {
+            const selected = studentSelect.selectedOptions[0];
+            if (! selected) {
+                return;
+            }
+
+            if (branchSelect && selected.dataset.studentBranchId && ! branchSelect.value) {
+                branchSelect.value = selected.dataset.studentBranchId;
+                branchSelect.dispatchEvent(new Event('change'));
+            }
+
+            if (roomSelect && selected.dataset.studentRoomId && ! roomSelect.value) {
+                roomSelect.value = selected.dataset.studentRoomId;
+                roomSelect.dispatchEvent(new Event('change'));
+            }
+        });
+    }
+});
+</script>
 @endsection
