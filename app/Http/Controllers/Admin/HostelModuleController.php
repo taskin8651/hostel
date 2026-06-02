@@ -39,8 +39,8 @@ class HostelModuleController extends Controller
         $config = $this->module($module);
         abort_if(Gate::denies($module . '_create'), Response::HTTP_FORBIDDEN, '403 Forbidden');
 
-        $options = $this->optionsFor($config);
         $item = null;
+        $options = $this->optionsFor($config, $item);
 
         return view($this->viewName($module, 'create', 'form'), compact('module', 'config', 'options', 'item'));
     }
@@ -66,7 +66,8 @@ class HostelModuleController extends Controller
         abort_if(Gate::denies($module . '_show'), Response::HTTP_FORBIDDEN, '403 Forbidden');
 
         $item = $this->findItem($config, $id);
-        $options = $this->optionsFor($config);
+        $this->hydrateVirtualFields($module, $config, $item);
+        $options = $this->optionsFor($config, $item);
 
         return view($this->viewName($module, 'show'), compact('module', 'config', 'item', 'options'));
     }
@@ -199,6 +200,12 @@ class HostelModuleController extends Controller
             $rule = [];
             $rule[] = (($field['required'] ?? false) && ! (($field['type'] ?? null) === 'file' && $item)) ? 'required' : 'nullable';
 
+            if ($field['type'] === 'multiselect') {
+                $rules[$name] = ['nullable', 'array'];
+                $rules[$name . '.*'] = ['integer'];
+                continue;
+            }
+
             if ($field['type'] === 'email') {
                 $rule[] = 'email';
             } elseif ($field['type'] === 'number') {
@@ -226,6 +233,10 @@ class HostelModuleController extends Controller
         $data = [];
 
         foreach ($config['fields'] as $name => $field) {
+            if (($field['persist'] ?? true) === false) {
+                continue;
+            }
+
             if ($field['type'] === 'file') {
                 if ($request->hasFile($name)) {
                     $data[$name] = $request->file($name)->store('hostel/' . $module, 'public');
@@ -352,11 +363,11 @@ class HostelModuleController extends Controller
         }
 
         if ($module === 'leaves') {
-            if ($request->input('person_type') === 'student' && ! $request->input('student_id')) {
+            if ($request->input('user_id')) {
+                // User dropdown supports selecting any user, including student or staff login users.
+            } elseif ($request->input('person_type') === 'student' && ! $request->input('student_id')) {
                 throw ValidationException::withMessages(['student_id' => 'Student is required for student leave.']);
-            }
-
-            if ($request->input('person_type') === 'staff' && ! $request->input('staff_id')) {
+            } elseif ($request->input('person_type') === 'staff' && ! $request->input('staff_id')) {
                 throw ValidationException::withMessages(['staff_id' => 'Staff is required for staff leave.']);
             }
 
@@ -376,12 +387,12 @@ class HostelModuleController extends Controller
         }
     }
 
-    private function optionsFor(array $config): array
+    private function optionsFor(array $config, ?object $item = null): array
     {
         $options = [];
 
         foreach ($config['fields'] as $name => $field) {
-            if (($field['type'] ?? null) !== 'select') {
+            if (! in_array(($field['type'] ?? null), ['select', 'multiselect'], true)) {
                 continue;
             }
 
@@ -420,6 +431,10 @@ class HostelModuleController extends Controller
                         ->toArray();
                 }
             }
+
+            if (($field['type'] ?? null) === 'multiselect' && $item) {
+                $options[$name . '_selected'] = $this->selectedMultiselectValues($field, (int) $item->id);
+            }
         }
 
         return $options;
@@ -433,6 +448,7 @@ class HostelModuleController extends Controller
             'beds' => 'Bed ' . ($row->bed_number ?? $row->id),
             'staff' => $row->name ?? 'Staff #' . $row->id,
             'branches' => $row->name ?? 'Branch #' . $row->id,
+            'accessories' => trim(($row->name ?? 'Accessory #' . $row->id) . ' (' . ($row->quantity ?? 1) . ')'),
             'staff-attendance' => trim(($row->staff_id ?? 'Staff') . ' - ' . ($row->attendance_date ?? ('#' . $row->id)), ' -'),
             default => $row->title ?? $row->name ?? ('#' . $row->id),
         };
@@ -464,6 +480,13 @@ class HostelModuleController extends Controller
             return $options[$value] ?? (string) $value;
         }
 
+        if (($field['type'] ?? null) === 'multiselect') {
+            $values = is_array($value) ? $value : array_filter(explode(',', (string) $value));
+            $labels = array_map(fn ($item) => $options[$item] ?? (string) $item, $values);
+
+            return $labels ? implode(', ', $labels) : '-';
+        }
+
         if (($field['type'] ?? null) === 'file') {
             return Storage::disk('public')->url($value);
         }
@@ -481,6 +504,7 @@ class HostelModuleController extends Controller
 
         if ($module === 'students') {
             $this->syncStudentRoomAllocation($id, $data);
+            $this->syncStudentAccessories($id, request()->input('accessory_ids', []));
             $this->syncLoginUser($module, $id, $data);
             return;
         }
@@ -527,6 +551,54 @@ class HostelModuleController extends Controller
                 $data['branch_id'] = $room->branch_id;
             }
         }
+    }
+
+    private function hydrateVirtualFields(string $module, array $config, object $item): void
+    {
+        foreach ($config['fields'] as $name => $field) {
+            if (($field['type'] ?? null) !== 'multiselect') {
+                continue;
+            }
+
+            $item->{$name} = $this->selectedMultiselectValues($field, (int) $item->id);
+        }
+    }
+
+    private function selectedMultiselectValues(array $field, int $recordId): array
+    {
+        if (($field['pivot'] ?? null) === 'hostel_student_accessory') {
+            return DB::table('hostel_student_accessory')
+                ->where('student_id', $recordId)
+                ->pluck('accessory_id')
+                ->map(fn ($id) => (string) $id)
+                ->all();
+        }
+
+        return [];
+    }
+
+    private function syncStudentAccessories(int $studentId, array|string|null $accessoryIds): void
+    {
+        $ids = collect((array) $accessoryIds)
+            ->filter(fn ($id) => $id !== null && $id !== '')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        DB::table('hostel_student_accessory')->where('student_id', $studentId)->delete();
+
+        if ($ids->isEmpty()) {
+            return;
+        }
+
+        $rows = $ids->map(fn ($id) => [
+            'student_id' => $studentId,
+            'accessory_id' => $id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ])->all();
+
+        DB::table('hostel_student_accessory')->insert($rows);
     }
 
     private function syncStudentRoomAllocation(int $studentId, array $data): void

@@ -61,6 +61,40 @@
 
                     @if($field['type'] === 'textarea')
                         <textarea name="{{ $name }}" id="{{ $name }}" rows="4" class="field-input {{ $errors->has($name) ? 'error' : '' }}">{{ $oldValue }}</textarea>
+                    @elseif($field['type'] === 'multiselect')
+                        @php
+                            $selectedValues = old($name, is_array($oldValue) ? $oldValue : ($options[$name . '_selected'] ?? []));
+                            $selectedValues = array_map('strval', (array) $selectedValues);
+                        @endphp
+                        @if(($field['display'] ?? '') === 'checkboxes')
+                            <div class="field-input {{ $errors->has($name) ? 'error' : '' }}" style="height:auto; min-height:44px; padding:10px; display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:8px;">
+                                @forelse($options[$name] ?? [] as $value => $label)
+                                    @php($meta = $options[$name . '_meta'][$value] ?? [])
+                                    <label style="display:flex; align-items:center; gap:8px; margin:0; font-weight:500;">
+                                        <input type="checkbox"
+                                               name="{{ $name }}[]"
+                                               value="{{ $value }}"
+                                               data-branch-id="{{ $meta['branch_id'] ?? '' }}"
+                                               data-room-id="{{ $meta['room_id'] ?? '' }}"
+                                               {{ in_array((string) $value, $selectedValues, true) ? 'checked' : '' }}>
+                                        <span>{{ $label }}</span>
+                                    </label>
+                                @empty
+                                    <span class="field-hint">No accessories available.</span>
+                                @endforelse
+                            </div>
+                        @else
+                            <select name="{{ $name }}[]" id="{{ $name }}" multiple size="5" data-depends-on="{{ $field['depends_on'] ?? '' }}" class="field-input {{ $errors->has($name) ? 'error' : '' }}">
+                                @foreach($options[$name] ?? [] as $value => $label)
+                                    @php($meta = $options[$name . '_meta'][$value] ?? [])
+                                    <option value="{{ $value }}"
+                                            data-branch-id="{{ $meta['branch_id'] ?? '' }}"
+                                            data-room-id="{{ $meta['room_id'] ?? '' }}"
+                                            {{ in_array((string) $value, $selectedValues, true) ? 'selected' : '' }}>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                            <p class="field-hint">Hold Ctrl to choose multiple accessories.</p>
+                        @endif
                     @elseif($field['type'] === 'select')
                         <select name="{{ $name }}" id="{{ $name }}" data-depends-on="{{ $field['depends_on'] ?? '' }}" class="field-input {{ $errors->has($name) ? 'error' : '' }}">
                             <option value="">{{ trans('global.pleaseSelect') }}</option>

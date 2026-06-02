@@ -55,4 +55,9 @@ class Student extends BaseHostelModel
     {
         return $this->hasMany(Document::class, 'student_id');
     }
+
+    public function accessories()
+    {
+        return $this->belongsToMany(Accessory::class, 'hostel_student_accessory', 'student_id', 'accessory_id')->withTimestamps();
+    }
 }

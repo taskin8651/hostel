@@ -104,6 +104,12 @@ class HostelModuleApiController extends Controller
         $rules = [];
 
         foreach ($config['fields'] as $name => $field) {
+            if (($field['type'] ?? null) === 'multiselect') {
+                $rules[$name] = ['nullable', 'array'];
+                $rules[$name . '.*'] = ['integer'];
+                continue;
+            }
+
             $rule = [(($field['required'] ?? false) && ! (($field['type'] ?? null) === 'file' && $item)) ? 'required' : 'nullable'];
 
             if ($field['type'] === 'email') {
@@ -133,6 +139,10 @@ class HostelModuleApiController extends Controller
         $data = [];
 
         foreach ($config['fields'] as $name => $field) {
+            if (($field['persist'] ?? true) === false) {
+                continue;
+            }
+
             if ($field['type'] === 'file') {
                 if ($request->hasFile($name)) {
                     $data[$name] = $request->file($name)->store('hostel/' . $module, 'public');
@@ -267,11 +277,11 @@ class HostelModuleApiController extends Controller
         }
 
         if ($module === 'leaves') {
-            if ($request->input('person_type') === 'student' && ! $request->input('student_id')) {
+            if ($request->input('user_id')) {
+                // User dropdown supports selecting any user, including student or staff login users.
+            } elseif ($request->input('person_type') === 'student' && ! $request->input('student_id')) {
                 throw ValidationException::withMessages(['student_id' => 'Student is required for student leave.']);
-            }
-
-            if ($request->input('person_type') === 'staff' && ! $request->input('staff_id')) {
+            } elseif ($request->input('person_type') === 'staff' && ! $request->input('staff_id')) {
                 throw ValidationException::withMessages(['staff_id' => 'Staff is required for staff leave.']);
             }
 
@@ -326,6 +336,7 @@ class HostelModuleApiController extends Controller
 
         if ($module === 'students') {
             $this->syncStudentRoomAllocation($id, $data);
+            $this->syncStudentAccessories($id, request()->input('accessory_ids', []));
             $this->syncLoginUser($module, $id);
             return;
         }
@@ -413,6 +424,30 @@ class HostelModuleApiController extends Controller
         ]);
 
         $this->syncAllocation($newAllocation->id, $allocation);
+    }
+
+    private function syncStudentAccessories(int $studentId, array|string|null $accessoryIds): void
+    {
+        $ids = collect((array) $accessoryIds)
+            ->filter(fn ($id) => $id !== null && $id !== '')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        DB::table('hostel_student_accessory')->where('student_id', $studentId)->delete();
+
+        if ($ids->isEmpty()) {
+            return;
+        }
+
+        $rows = $ids->map(fn ($id) => [
+            'student_id' => $studentId,
+            'accessory_id' => $id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ])->all();
+
+        DB::table('hostel_student_accessory')->insert($rows);
     }
 
     private function afterDelete(string $module, object $item): void
