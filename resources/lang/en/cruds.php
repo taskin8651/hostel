@@ -2,8 +2,8 @@
 
 return [
     'userManagement' => [
-        'title'          => 'Usha Girls Hostel',
-        'title_singular' => 'Usha Girls Hostel',
+        'title'          => 'User management',
+        'title_singular' => 'User management',
     ],
     'permission' => [
         'title'          => 'Permissions',
