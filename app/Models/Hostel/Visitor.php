@@ -13,6 +13,30 @@ class Visitor extends BaseHostelModel
         'deleted_at' => 'datetime',
     ];
 
+    protected $fillable = [
+
+        'name',
+
+        'mobile',
+
+        'relation',
+
+        'purpose',
+
+        'student_id',
+
+        'room_id',
+
+        'visit_date',
+
+        'in_time',
+
+        'out_time',
+
+        'id_proof',
+    ];
+
+
     public function student()
     {
         return $this->belongsTo(Student::class, 'student_id');

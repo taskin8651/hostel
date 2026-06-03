@@ -6,6 +6,10 @@ use App\Http\Controllers\Api\V1\Admin\FoodMenusApiController;
 use App\Http\Controllers\Api\V1\Admin\EventsApiController;
 use App\Http\Controllers\Api\V1\Admin\NoticesApiController;
 use App\Http\Controllers\Api\V1\Admin\StudentAttendanceApiController;
+use App\Http\Controllers\Api\V1\Admin\VisitorsApiController;
+use App\Http\Controllers\Api\V1\Admin\LeavesApiController;
+use App\Http\Controllers\Api\V1\Admin\ComplaintsApiController;
+use App\Http\Controllers\Api\V1\Admin\FeePaymentsApiController;
 
 // LOGIN
 Route::post('/login', [AuthApiController::class, 'login']);
@@ -36,6 +40,26 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // STUDENT ATTENDANCE
     Route::post('/student-attendance/create',[StudentAttendanceApiController::class, 'storeAttendance']);
+
+    // VISITORS
+    Route::get('/visitors', [VisitorsApiController::class, 'index']);
+    Route::post('/visitors/create', [VisitorsApiController::class, 'store']);
+    Route::get('/visitors/{id}', [VisitorsApiController::class, 'show']);
+
+    // LEAVES 
+    Route::get('/leaves', [LeavesApiController::class, 'index']); 
+    Route::post('/leaves/apply', [LeavesApiController::class, 'store']); 
+    Route::get('/leaves/{id}', [LeavesApiController::class, 'show']);
+
+    // COMPLAINTS
+    Route::get('/complaints', [ComplaintsApiController::class, 'index']); 
+    Route::post('/complaints/create', [ComplaintsApiController::class, 'store']); 
+    Route::get('/complaints/{id}', [ComplaintsApiController::class, 'show']);
+
+    // FEE PAYMENTS
+    Route::get('/fee-payments', [FeePaymentsApiController::class, 'index']); 
+    Route::post('/fee-payments/create', [FeePaymentsApiController::class, 'store']); 
+    Route::get('/fee-payments/{id}', [FeePaymentsApiController::class, 'show']);
 
 
 

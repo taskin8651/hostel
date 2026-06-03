@@ -13,6 +13,27 @@ class FeePayment extends BaseHostelModel
         'deleted_at' => 'datetime',
     ];
 
+    protected $fillable = [
+
+        'student_id',
+
+        'receipt_number',
+
+        'month',
+
+        'paid_amount',
+
+        'due_amount',
+
+        'payment_date',
+
+        'payment_mode',
+
+        'attachment',
+
+        'remark',
+    ];
+
     public function student()
     {
         return $this->belongsTo(Student::class, 'student_id');

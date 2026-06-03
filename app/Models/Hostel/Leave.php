@@ -14,6 +14,27 @@ class Leave extends BaseHostelModel
         'deleted_at' => 'datetime',
     ];
 
+    protected $fillable = [
+
+        'person_type',
+
+        'user_id',
+
+        'student_id',
+
+        'staff_id',
+
+        'leave_type',
+
+        'from_date',
+
+        'to_date',
+
+        'reason',
+
+        'status',
+    ];
+
     public function student()
     {
         return $this->belongsTo(Student::class, 'student_id');

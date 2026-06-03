@@ -12,4 +12,24 @@ class Complaint extends BaseHostelModel
         'updated_at' => 'datetime',
         'deleted_at' => 'datetime',
     ];
+
+    protected $fillable = [
+
+        'title',
+
+        'category',
+
+        'user_id',
+
+        'student_id',
+
+        'room_id',
+
+        'complaint_date',
+
+        'status',
+
+        'resolution_remark',
+    ];
+
 }
